@@ -11,7 +11,7 @@ permissions: {}
 jobs:
   detect-changes:
     # Run on `grafana/grafana` main branch, or on pull requests to prevent double-running on mirrors
-    if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && ((github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))) }}
     name: Detect whether code changed
     runs-on: ubuntu-x64-small
     permissions:
@@ -38,7 +38,7 @@ jobs:
       - detect-changes
     # Run this workflow only for PRs from forks; if it gets merged into `main` or `release-*`,
     # the `frontend-unit-tests-enterprise` workflow will run instead
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true && needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true && needs.detect-changes.outputs.changed == 'true') }}
     runs-on: ubuntu-x64-large
     name: "Unit tests (${{ matrix.shard }} / ${{ matrix.total }})"
     strategy:
@@ -70,7 +70,7 @@ jobs:
     needs:
       - detect-changes
     # Run this workflow for non-PR events (like pushes to `main` or `release-*`) OR for internal PRs (PRs not from forks)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false && needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false && needs.detect-changes.outputs.changed == 'true') }}
     runs-on: ubuntu-x64-large
     name: "Unit tests (${{ matrix.shard }} / ${{ matrix.total }})"
     strategy:
@@ -104,7 +104,7 @@ jobs:
   frontend-decoupled-plugin-tests:
     needs:
       - detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.changed == 'true') }}
     runs-on: ubuntu-x64-large
     name: "Decoupled plugin tests"
     steps:
@@ -125,7 +125,7 @@ jobs:
   frontend-packages-unit-tests:
     needs:
       - detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.changed == 'true') }}
     runs-on: ubuntu-x64-large
     name: "Packages unit tests"
     steps:
@@ -156,7 +156,7 @@ jobs:
     # always() is the best function here.
     # success() || failure() will skip this function if any need is also skipped.
     # That means conditional test suites will fail the entire requirement check.
-    if: always()
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (always()) }}
 
     name: All frontend unit tests complete
     runs-on: ubuntu-x64-small
@@ -174,7 +174,7 @@ jobs:
   devenv:
     needs:
       - detect-changes
-    if: needs.detect-changes.outputs.devenv-changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.devenv-changed == 'true') }}
     runs-on: ubuntu-x64-large
     name: "Devenv frontend-service build"
     steps:

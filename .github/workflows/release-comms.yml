@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   setup:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.head_ref, 'release/')) }}
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.head_ref, 'release/'))) }}
     name: Setup and establish latest
     outputs:
       version: ${{ steps.output.outputs.version }}
@@ -64,6 +64,7 @@ jobs:
           echo "version=$VERSION"
         } >> "$GITHUB_OUTPUT"
   create_next_release_branch_grafana:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Create next release branch (Grafana)
     needs: setup
     uses: grafana/grafana/.github/workflows/create-next-release-branch.yml@main
@@ -71,6 +72,7 @@ jobs:
       ownerRepo: 'grafana/grafana'
       source: ${{ needs.setup.outputs.release_branch }}
   create_next_release_branch_enterprise:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Create next release branch (Grafana Enterprise)
     needs: setup
     uses: grafana/grafana/.github/workflows/create-next-release-branch.yml@main
@@ -78,6 +80,7 @@ jobs:
       ownerRepo: 'grafana/grafana-enterprise'
       source: ${{ needs.setup.outputs.release_branch }}
   create_security_branch_grafana:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Create security branch (Grafana Security Mirror)
     needs: setup
     uses: grafana/grafana/.github/workflows/create-security-branch.yml@main
@@ -86,6 +89,7 @@ jobs:
       security_branch_number: "01"
       repository: grafana/grafana-security-mirror
   create_security_branch_enterprise:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Create security branch (Enterprise)
     needs: setup
     uses: grafana/grafana/.github/workflows/create-security-branch.yml@main
@@ -94,6 +98,7 @@ jobs:
       security_branch_number: "01"
       repository: grafana/grafana-enterprise
   migrate_prs_grafana:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     needs:
       - setup
       - create_next_release_branch_grafana
@@ -103,6 +108,7 @@ jobs:
       from: ${{ needs.setup.outputs.release_branch }}
       to: ${{ needs.create_next_release_branch_grafana.outputs.branch }}
   migrate_prs_enterprise:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     needs:
       - setup
       - create_next_release_branch_enterprise
@@ -122,6 +128,7 @@ jobs:
     # a github release requires a git tag
     # The github-release action retrieves the changelog using the /repos/grafana/grafana/contents/CHANGELOG.md API
     # endpoint.
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     needs: setup
     uses: grafana/grafana/.github/workflows/github-release.yml@main
     with:
@@ -129,6 +136,7 @@ jobs:
       dry_run: ${{ needs.setup.outputs.dry_run == 'true' }}
       latest: ${{ needs.setup.outputs.latest }}
   post_on_slack:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     needs: setup
     runs-on: ubuntu-latest
     env:

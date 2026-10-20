@@ -20,6 +20,7 @@ concurrency:
 
 jobs:
   run-actionlint:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Lint GitHub Actions files
     runs-on: ubuntu-latest
     permissions:

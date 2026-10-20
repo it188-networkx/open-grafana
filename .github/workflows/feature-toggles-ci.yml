@@ -11,6 +11,7 @@ permissions: {}
 
 jobs:
   test:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Feature toggles documentation is in sync with source
 
     runs-on: ubuntu-latest

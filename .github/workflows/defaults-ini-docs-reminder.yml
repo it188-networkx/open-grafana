@@ -7,7 +7,7 @@ on:
 
 jobs:
   add-comment:
-    if: ${{ ! github.event.pull_request.head.repo.fork }}
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (! github.event.pull_request.head.repo.fork) }}
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write

@@ -15,6 +15,7 @@ permissions: {}
 
 jobs:
   trufflehog:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Run Trufflehog
     runs-on: ubuntu-latest
     permissions:

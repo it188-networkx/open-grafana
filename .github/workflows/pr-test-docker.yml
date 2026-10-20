@@ -6,6 +6,7 @@ on:
 jobs:
   detect-changes:
     # Run on `grafana/grafana` main branch, or on pull requests to prevent double-running on mirrors
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Detect whether code changed
     runs-on: ubuntu-latest
     permissions:
@@ -25,7 +26,7 @@ jobs:
 
   build-dockerfile:
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.changed == 'true') }}
     runs-on: ubuntu-x64-large-io
     permissions:
       contents: read

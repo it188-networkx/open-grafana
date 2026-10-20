@@ -18,7 +18,7 @@ jobs:
   trigger_downstream_create_security_patch:
     concurrency: create-patch-${{ github.ref_name }}
     uses: grafana/security-patch-actions/.github/workflows/create-patch.yml@main # zizmor: ignore[unpinned-uses]
-    if: github.repository == 'grafana/grafana-security-mirror'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.repository == 'grafana/grafana-security-mirror') }}
     with:
       repo: "${{ github.repository }}"
       src_ref: "${{ github.head_ref }}" # this is the source branch name, Ex: "feature/newthing"

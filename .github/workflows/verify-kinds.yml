@@ -10,6 +10,7 @@ permissions: {}
 
 jobs:
   main:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     runs-on: "ubuntu-latest"
     permissions:
       contents: read # clone repository

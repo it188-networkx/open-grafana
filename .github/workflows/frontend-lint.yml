@@ -10,6 +10,7 @@ permissions: {}
 
 jobs:
   detect-changes:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Detect whether code changed
     runs-on: ubuntu-latest
     permissions:
@@ -36,7 +37,7 @@ jobs:
       id-token: write
     # Run this workflow only for PRs from forks; if it gets merged into `main` or `release-*`,
     # the `lint-frontend-prettier-enterprise` workflow will run instead
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true && needs.detect-changes.outputs.prettier == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true && needs.detect-changes.outputs.prettier == 'true') }}
     name: Lint
     runs-on: ubuntu-latest
     steps:
@@ -54,7 +55,7 @@ jobs:
       contents: read
       id-token: write
     # Run this workflow for non-PR events (like pushes to `main` or `release-*`) OR for internal PRs (PRs not from forks)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false && needs.detect-changes.outputs.prettier == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false && needs.detect-changes.outputs.prettier == 'true') }}
     name: Lint
     runs-on: ubuntu-latest
     steps:
@@ -77,7 +78,7 @@ jobs:
       id-token: write
     # Run this workflow only for PRs from forks; if it gets merged into `main` or `release-*`,
     # the `lint-frontend-typecheck-enterprise` workflow will run instead
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true && needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true && needs.detect-changes.outputs.changed == 'true') }}
     name: Typecheck
     runs-on: ubuntu-latest
     steps:
@@ -94,7 +95,7 @@ jobs:
       contents: read
       id-token: write
     # Run this workflow for non-PR events (like pushes to `main` or `release-*`) OR for internal PRs (PRs not from forks)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false && needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false && needs.detect-changes.outputs.changed == 'true') }}
     name: Typecheck
     runs-on: ubuntu-latest
     steps:
@@ -115,7 +116,7 @@ jobs:
       id-token: write
     # Run this workflow only for PRs from forks; if it gets merged into `main` or `release-*`,
     # the `lint-frontend-api-clients-enterprise` workflow will run instead
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true) }}
     name: Verify API clients
     runs-on: ubuntu-latest
     steps:
@@ -143,7 +144,7 @@ jobs:
       contents: read
       id-token: write
     # Run this workflow for non-PR events (like pushes to `main` or `release-*`) OR for internal PRs (PRs not from forks)
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
     name: Verify API clients (enterprise)
     runs-on: ubuntu-latest
     steps:
@@ -175,7 +176,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    if: github.event_name == 'pull_request' && needs.detect-changes.outputs.changed-frontend-packages == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name == 'pull_request' && needs.detect-changes.outputs.changed-frontend-packages == 'true') }}
     name: Verify packed frontend packages
     runs-on: ubuntu-latest
     steps:

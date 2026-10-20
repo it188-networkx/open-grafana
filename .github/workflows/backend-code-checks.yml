@@ -16,6 +16,7 @@ on:
 
 jobs:
   detect-changes:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Detect whether code changed
     runs-on: ubuntu-latest
     permissions:
@@ -38,7 +39,7 @@ jobs:
       contents: read
       id-token: write
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.changed == 'true') }}
     name: Validate Backend Configs
     runs-on: ubuntu-latest
     steps:

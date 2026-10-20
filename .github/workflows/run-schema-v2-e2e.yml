@@ -15,7 +15,7 @@ jobs:
   dashboard-schema-v2-e2e:
     runs-on: ubuntu-latest-8-cores
     continue-on-error: true
-    if: github.event.pull_request.draft == false
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event.pull_request.draft == false) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5

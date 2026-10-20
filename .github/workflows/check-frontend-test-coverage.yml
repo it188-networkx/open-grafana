@@ -15,6 +15,7 @@ permissions: {}
 
 jobs:
   setup:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Setup opted-in teams
     runs-on: ubuntu-x64-small
     outputs:
@@ -32,6 +33,7 @@ jobs:
         run: echo "Opted-in teams defined in job outputs"
 
   detect-changes:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     name: Detect changed files
     runs-on: ubuntu-x64-small
     permissions:
@@ -59,7 +61,7 @@ jobs:
   cleanup-on-skip:
     name: Cleanup coverage comments
     needs: setup
-    if: contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage') && github.event.pull_request.head.repo.fork == false
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage') && github.event.pull_request.head.repo.fork == false) }}
     runs-on: ubuntu-x64-small
     permissions:
       pull-requests: write
@@ -94,7 +96,7 @@ jobs:
   post-skip-warning:
     name: Post skip warning
     needs: [setup, cleanup-on-skip]
-    if: contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage') && github.event.pull_request.head.repo.fork == false
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage') && github.event.pull_request.head.repo.fork == false) }}
     runs-on: ubuntu-x64-small
     permissions:
       pull-requests: write
@@ -142,7 +144,7 @@ jobs:
 
   clear-skip-warning:
     name: Clear skip warning
-    if: "!contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage') && github.event.pull_request.head.repo.fork == false"
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (!contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage') && github.event.pull_request.head.repo.fork == false) }}
     runs-on: ubuntu-x64-small
     permissions:
       pull-requests: write
@@ -173,7 +175,7 @@ jobs:
   coverage:
     name: Coverage ${{ matrix.branch }} - ${{ matrix.codeowner }}
     needs: [setup, detect-changes]
-    if: "!contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage')"
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (!contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage')) }}
     runs-on: ubuntu-x64-large
     permissions:
       contents: read
@@ -254,7 +256,7 @@ jobs:
   compare-and-report:
     name: Compare & Report - ${{ matrix.codeowner }}
     needs: [setup, detect-changes, coverage]
-    if: "!contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage')"
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (!contains(github.event.pull_request.labels.*.name, 'no-check-frontend-test-coverage')) }}
     runs-on: ubuntu-x64-small
     permissions:
       contents: read
@@ -372,7 +374,7 @@ jobs:
   all-coverage-checks-pass:
     name: All coverage checks pass
     needs: [setup, compare-and-report]
-    if: always()
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (always()) }}
     runs-on: ubuntu-x64-small
     steps:
       - name: Check if skipped

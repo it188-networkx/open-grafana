@@ -28,7 +28,7 @@ permissions:
 jobs:
   main:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event.pull_request.draft == false) }}
     steps:
       - name: Checkout Actions
         uses: actions/checkout@v5
