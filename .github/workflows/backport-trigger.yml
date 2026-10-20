@@ -14,10 +14,7 @@ permissions: {}
 jobs:
   trigger:
     # Only run this job if the PR has been merged and has a label containing "backport v"
-    if: |
-      github.repository == 'grafana/grafana' &&
-      github.event.pull_request.merged == true &&
-      contains(join(github.event.pull_request.labels.*.name, ','), 'backport v')
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.repository == 'grafana/grafana' && github.event.pull_request.merged == true && contains(join(github.event.pull_request.labels.*.name, ','), 'backport v')) }}
     runs-on: ubuntu-latest
     steps:
       # TODO: save this as job summary instead?

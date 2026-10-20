@@ -21,7 +21,7 @@ env:
 jobs:
   detect-changes:
     # Run on `grafana/grafana` main branch, or on pull requests to prevent double-running on mirrors
-    if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && ((github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))) }}
     name: Detect whether code changed
     runs-on: ubuntu-latest
     permissions:
@@ -42,7 +42,7 @@ jobs:
 
   build-grafana:
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.changed == 'true') }}
     name: Build & Package Grafana
     runs-on: ubuntu-latest-16-cores
     permissions:
@@ -110,7 +110,7 @@ jobs:
   # TODO: we won't need this when we only have playwright
   build-e2e-runner:
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.changed == 'true') }}
     name: Build E2E test runner
     runs-on: ubuntu-latest
     permissions:
@@ -141,7 +141,7 @@ jobs:
           path: e2e-runner
 
   push-docker-image:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false) }}
     permissions:
       contents: read
       id-token: write
@@ -193,6 +193,7 @@ jobs:
            -f "output[text]=${IMAGE}"
 
   run-e2e-tests:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     needs:
       - build-grafana
       - build-e2e-runner
@@ -256,7 +257,7 @@ jobs:
     name: Verify Storybook (Playwright)
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.changed == 'true') }}
     permissions:
       contents: read
 
@@ -281,6 +282,7 @@ jobs:
         run: yarn e2e:playwright:storybook
 
   run-playwright-tests:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     needs:
       - build-grafana
     name: Playwright E2E tests (${{ matrix.shard }}/${{ matrix.shardTotal }})
@@ -315,7 +317,7 @@ jobs:
           retention-days: 1
 
   run-azure-monitor-e2e:
-    if: needs.detect-changes.outputs.cloud_plugins_changed == 'true' && github.event.pull_request.head.repo.fork == false && github.event_name == 'pull_request'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.cloud_plugins_changed == 'true' && github.event.pull_request.head.repo.fork == false && github.event_name == 'pull_request') }}
     runs-on: ubuntu-x64-large
     needs:
       - build-grafana
@@ -387,7 +389,7 @@ jobs:
       - run-azure-monitor-e2e
       - run-storybook-test
       - build-grafana
-    if: ${{ !cancelled() }}
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (!cancelled()) }}
     name: All Playwright tests complete
     runs-on: ubuntu-latest
     steps:
@@ -468,6 +470,7 @@ jobs:
           fi
 
   run-a11y-test:
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') }}
     needs:
       - build-grafana
     name: A11y test
@@ -509,7 +512,7 @@ jobs:
       - run-a11y-test
     name: Publish metrics
     # Run on `grafana/grafana` main branch only
-    if: github.event_name == 'push' && github.repository == 'grafana/grafana' && github.ref_name == 'main'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event_name == 'push' && github.repository == 'grafana/grafana' && github.ref_name == 'main') }}
     permissions:
       contents: read
       id-token: write
@@ -551,7 +554,7 @@ jobs:
     # always() is the best function here.
     # success() || failure() will skip this function if any need is also skipped.
     # That means conditional test suites will fail the entire requirement check.
-    if: always()
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (always()) }}
 
     name: All E2E tests complete
     runs-on: ubuntu-latest

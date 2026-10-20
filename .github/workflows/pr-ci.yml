@@ -1,0 +1,173 @@
+name: Fork PR CI
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fork-pr-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.scope.outputs.app }}
+      server: ${{ steps.scope.outputs.server }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+      - id: scope
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+        run: python3 .github/scripts/ci.py plan
+  backend:
+    needs: plan
+    if: needs.plan.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    env:
+      GOMAXPROCS: '2'
+      GOFLAGS: '-p=2'
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: '**/go.sum'
+      - name: Test all Go modules in parallel shards
+        env:
+          SHARD: ${{ matrix.shard }}/8
+        run: |
+          set -euo pipefail
+          packages=$(./scripts/ci/backend-tests/shard.sh -N"$SHARD")
+          test -n "$packages"
+          readarray -t selected <<< "$packages"
+          go test -short -count=1 -timeout=30m "${selected[@]}"
+  backend-build:
+    needs: plan
+    if: needs.plan.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GOMAXPROCS: '2'
+      GOFLAGS: '-p=2'
+      CGO_ENABLED: '1'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: '**/go.sum'
+      - name: Compile server and command-line entry points
+        run: go build ./pkg/cmd/grafana ./pkg/cmd/grafana-server ./pkg/cmd/grafana-cli
+  integration:
+    needs: plan
+    if: needs.plan.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      GOMAXPROCS: '2'
+      GOFLAGS: '-p=2'
+      CGO_ENABLED: '1'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: '**/go.sum'
+      - name: Run isolated SQLite integration tests
+        env:
+          SHARD: ${{ matrix.shard }}/4
+        run: |
+          set -euo pipefail
+          packages=$(./scripts/ci/backend-tests/shard.sh -N"$SHARD")
+          test -n "$packages"
+          readarray -t selected <<< "$packages"
+          go test -tags=sqlite -count=1 -timeout=8m -run '^TestIntegration' "${selected[@]}"
+  frontend:
+    needs: plan
+    if: needs.plan.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    env:
+      NODE_OPTIONS: --max-old-space-size=5120
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      CYPRESS_INSTALL_BINARY: '0'
+      TEST_MAX_WORKERS: '2'
+      TEST_SHARD: ${{ matrix.shard }}
+      TEST_SHARD_TOTAL: '8'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - run: corepack enable
+      - uses: ./.github/actions/setup-node
+      - run: yarn install --immutable
+      - run: yarn test:ci
+  frontend-checks:
+    needs: plan
+    if: needs.plan.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [lint, typecheck, build, 'packages:test:ci', 'plugin:test:ci']
+    env:
+      NODE_OPTIONS: --max-old-space-size=5120
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+      CYPRESS_INSTALL_BINARY: '0'
+      NX_DAEMON: 'false'
+      NX_PARALLEL: '2'
+      TEST_MAX_WORKERS: '2'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - run: corepack enable
+      - uses: ./.github/actions/setup-node
+      - run: yarn install --immutable
+      - run: yarn run "${{ matrix.task }}"
+  check:
+    name: PR checks
+    needs: [plan, backend, backend-build, integration, frontend, frontend-checks]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          jobs = json.loads(os.environ['RESULTS'])
+          assert jobs['plan']['result'] == 'success', 'plan'
+          for name, scope in [('backend', 'server'), ('backend-build', 'server'), ('integration', 'server'), ('frontend', 'app'), ('frontend-checks', 'app')]:
+              planned = jobs['plan']['outputs'][scope]
+              assert planned in ('true', 'false'), scope
+              expected = 'success' if planned == 'true' else 'skipped'
+              assert jobs[name]['result'] == expected, name
+          PY

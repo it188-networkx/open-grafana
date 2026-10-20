@@ -16,7 +16,7 @@ concurrency:
 jobs:
   detect-changes:
     # Run on `grafana/grafana` main branch, or on pull requests to prevent double-running on mirrors
-    if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && ((github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))) }}
     name: Detect whether code changed
     runs-on: ubuntu-latest
     permissions:
@@ -38,7 +38,7 @@ jobs:
     name: Verify committed API specs match
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: github.repository == 'grafana/grafana' && needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.repository == 'grafana/grafana' && needs.detect-changes.outputs.changed == 'true') }}
     permissions:
       contents: read # clone the repository
       id-token: write # required for Vault access

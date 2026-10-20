@@ -16,7 +16,7 @@ permissions: {}
 jobs:
   shellcheck:
     # Run on `grafana/grafana` main branch, or on pull requests to prevent double-running on mirrors
-    if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && ((github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))) }}
     name: Shellcheck scripts
     runs-on: ubuntu-latest
     permissions:

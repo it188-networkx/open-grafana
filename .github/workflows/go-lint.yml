@@ -15,7 +15,7 @@ permissions:
 jobs:
   detect-changes:
     # Run on `grafana/grafana` main branch, or on pull requests to prevent double-running on mirrors
-    if: (github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && ((github.event_name == 'pull_request' || (github.event_name == 'push' && github.repository == 'grafana/grafana'))) }}
     name: Detect whether code changed
     runs-on: ubuntu-latest
     permissions:
@@ -35,7 +35,7 @@ jobs:
 
   go-fmt:
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.changed == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -56,7 +56,7 @@ jobs:
 
   lint-go:
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (needs.detect-changes.outputs.changed == 'true') }}
     runs-on: ubuntu-x64-large-io
     steps:
       - uses: actions/checkout@v5

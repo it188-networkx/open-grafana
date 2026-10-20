@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     # Don't run from forks for the moment. If we find this useful we can do the workflow_run dance
     # to make it work for forks.
-    if: github.event.pull_request.head.repo.fork == false
+    if: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_target' || github.repository == 'grafana/grafana') && (github.event.pull_request.head.repo.fork == false) }}
     permissions:
       contents: read
       id-token: write
