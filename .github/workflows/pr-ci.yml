@@ -23,7 +23,9 @@ jobs:
       - id: scope
         env:
           CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
-        run: python3 .github/scripts/ci.py plan
+        run: |
+          git diff --check "$CI_BASE_SHA"...HEAD
+          python3 .github/scripts/ci.py plan
   backend:
     needs: plan
     if: needs.plan.outputs.server == 'true'
@@ -99,9 +101,11 @@ jobs:
           SHARD: ${{ matrix.shard }}/4
         run: |
           set -euo pipefail
-          packages=$(./scripts/ci/backend-tests/shard.sh -N"$SHARD")
+          packages=$(./scripts/ci/backend-tests/pkgs-with-tests-named.sh -b TestIntegration |
+            ./scripts/ci/backend-tests/shard.sh -N"$SHARD" -d-)
           test -n "$packages"
           readarray -t selected <<< "$packages"
+          echo "Integration packages in this shard: ${#selected[@]}"
           go test -tags=sqlite -count=1 -timeout=8m -run '^TestIntegration' "${selected[@]}"
   frontend:
     needs: plan
@@ -158,16 +162,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - env:
           RESULTS: ${{ toJSON(needs) }}
-        run: |
-          python3 - <<'PY'
-          import json, os
-          jobs = json.loads(os.environ['RESULTS'])
-          assert jobs['plan']['result'] == 'success', 'plan'
-          for name, scope in [('backend', 'server'), ('backend-build', 'server'), ('integration', 'server'), ('frontend', 'app'), ('frontend-checks', 'app')]:
-              planned = jobs['plan']['outputs'][scope]
-              assert planned in ('true', 'false'), scope
-              expected = 'success' if planned == 'true' else 'skipped'
-              assert jobs[name]['result'] == expected, name
-          PY
+        run: python3 .github/scripts/ci.py check-jobs

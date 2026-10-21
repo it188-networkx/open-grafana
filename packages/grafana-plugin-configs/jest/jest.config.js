@@ -17,6 +17,8 @@ export default {
   setupFiles: ['jest-canvas-mock'],
   setupFilesAfterEnv: ['<rootDir>/jest-setup.js'],
   testEnvironment: 'jsdom',
+  // Match the root suite's allowance for asynchronous editor initialization.
+  testTimeout: 30000,
   testEnvironmentOptions: {
     customExportConditions: ['@grafana-app/source', 'browser'],
   },

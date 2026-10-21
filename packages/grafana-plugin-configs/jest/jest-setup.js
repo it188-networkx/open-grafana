@@ -1,9 +1,13 @@
 import '@testing-library/jest-dom';
+import { configure } from '@testing-library/react';
 import { TextEncoder, TextDecoder } from 'util';
 
 import { matchers } from '@grafana/test-utils/matchers';
 
 expect.extend(matchers);
+
+// Keep lazy editor waits consistent with public/test/setupTests.ts.
+configure({ asyncUtilTimeout: 2000 });
 
 Object.assign(global, { TextDecoder, TextEncoder });
 
