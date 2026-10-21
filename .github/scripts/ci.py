@@ -1,7 +1,9 @@
 """Conservative PR scope and fail-closed aggregate gate."""
+import json
 import os
 import subprocess
 import sys
+from pathlib import PurePosixPath
 
 
 def git(*args):
@@ -20,23 +22,50 @@ def changed():
 
 
 def code_required(files):
-    # Only known non-runtime documentation may skip expensive checks.
-    return not files or any(p not in {"README.md", "AGENTS.md", "CI.md"} for p in files)
+    return any(scopes(files))
 
 
 def scopes(files):
     app = server = not files
     for path in files:
-        if path in {"README.md", "AGENTS.md", "CI.md"}:
+        name = PurePosixPath(path).name
+        suffix = PurePosixPath(path).suffix
+        if path in {"README.md", "AGENTS.md", "CI.md"} or (
+            path.startswith("docs/sources/")
+            and suffix in {".md", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
+        ):
             continue
-        if path.startswith(("packages/", "public/")):
+        # Shared contracts/generators must be classified before language roots.
+        if path.startswith(("kinds/", "kindsv2/", "pkg/kinds/", "pkg/codegen/",
+                            "proto/", "packages/grafana-schema/",
+                            "packages/grafana-api-clients/",
+                            "apps/dashboard/pkg/migration/")) or suffix in {".cue", ".proto"} or path == "public/openapi3.json":
+            app = server = True
+        elif name in {"go.mod", "go.sum", "go.work", "go.work.sum"}:
+            server = True
+        elif path.startswith(("packages/", "public/", ".yarn/")) or path in {
+            "package.json", "yarn.lock", ".yarnrc.yml", "jest.config.js",
+            "eslint.config.js", "nx.json", "tsconfig.json",
+        }:
             app = True
         elif path.startswith(("pkg/", "apps/")):
             server = True
         else:
-            # Shared code, plugins, dependencies and unknown paths affect both.
+            # CI policy, scripts, configuration and unknown paths require both.
             app = server = True
     return app, server
+
+
+def check_jobs(jobs):
+    if jobs["plan"]["result"] != "success":
+        raise ValueError("Planning failed")
+    for name, scope in [("backend", "server"), ("backend-build", "server"),
+                        ("integration", "server"), ("frontend", "app"),
+                        ("frontend-checks", "app")]:
+        planned = jobs["plan"]["outputs"][scope]
+        expected = {"true": "success", "false": "skipped"}.get(planned)
+        if expected is None or jobs[name]["result"] != expected:
+            raise ValueError("Required check did not complete: " + name)
 
 
 def gate(plan, run, validation):
@@ -54,6 +83,8 @@ if __name__ == "__main__":
             for name, value in [("run", run), ("app", app), ("server", server)]:
                 output.write(name + "=" + str(value).lower() + "\n")
         print("Run code checks:", run)
+    elif command == "check-jobs":
+        check_jobs(json.loads(os.environ["RESULTS"]))
     elif command == "gate":
         if not gate(os.environ["PLAN_RESULT"], os.environ["PLAN_RUN"], os.environ["VALIDATION_RESULT"]):
             raise SystemExit("Required PR checks failed or did not complete")
