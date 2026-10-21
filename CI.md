@@ -12,7 +12,7 @@ The planner classifies every changed path, including both sides of renames and d
 | Shared schemas/API clients, dashboard migration definitions, CUE/Protobuf, generators | Both |
 | CI policy, other scripts/configuration, unknown paths or manual full run | Both |
 
-Shared contracts are classified before frontend/backend directories. Runtime Markdown/assets outside the documentation allowlist still trigger their code checks. No affected-package or affected-test shortcut is applied within a selected technology stack. This avoids missing indirect consumers and dynamic registrations. Failed, cancelled, or unexpectedly skipped jobs block merging. Repository rules require this gate before native automatic merge.
+Generated feature-toggle/transformation documentation, feature-toggle definitions, and frontend code inside Go application directories also run both stacks. Shared contracts are classified before frontend/backend directories. Runtime Markdown/assets outside the documentation allowlist still trigger their code checks. No affected-package or affected-test shortcut is applied within a selected technology stack. This avoids missing indirect consumers and dynamic registrations. Failed, cancelled, or unexpectedly skipped jobs block merging. Repository rules require this gate before native automatic merge.
 
 Upstream PR jobs depend on Grafana infrastructure, Enterprise source, or upstream organization credentials. They only handle PR events in grafana/grafana; their push, tag, dispatch, and release behavior is unchanged. The fork PR workflow needs no publishing or Enterprise credentials.
 

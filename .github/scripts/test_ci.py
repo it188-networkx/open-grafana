@@ -44,6 +44,10 @@ class PolicyTests(unittest.TestCase):
             "proto/query.proto": (True, True),
             "public/openapi3.json": (True, True),
             ".github/scripts/ci.py": (True, True),
+            "pkg/services/featuremgmt/registry.go": (True, True),
+            "apps/plugins/plugin/src/generated/meta/types.ts": (True, True),
+            "docs/sources/setup-grafana/configure-grafana/feature-toggles/index.md": (True, True),
+            "docs/sources/visualizations/panels-visualizations/query-transform-data/transform-data/index.md": (True, True),
         }
         for path, expected in cases.items():
             with self.subTest(path=path):

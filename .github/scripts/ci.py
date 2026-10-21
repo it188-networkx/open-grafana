@@ -30,6 +30,16 @@ def scopes(files):
     for path in files:
         name = PurePosixPath(path).name
         suffix = PurePosixPath(path).suffix
+        # Generated documentation and mixed-language packages are contracts too.
+        if path in {
+            "docs/sources/setup-grafana/configure-grafana/feature-toggles/index.md",
+            "docs/sources/visualizations/panels-visualizations/query-transform-data/transform-data/index.md",
+        } or path.startswith("pkg/services/featuremgmt/") or (
+            path.startswith(("apps/", "pkg/"))
+            and suffix in {".ts", ".tsx", ".js", ".jsx", ".css"}
+        ):
+            app = server = True
+            continue
         if path in {"README.md", "AGENTS.md", "CI.md"} or (
             path.startswith("docs/sources/")
             and suffix in {".md", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
