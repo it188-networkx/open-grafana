@@ -22,6 +22,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/util/retry"
 
 	provisioning "github.com/grafana/grafana/apps/provisioning/pkg/apis/provisioning/v0alpha1"
 	clientset "github.com/grafana/grafana/apps/provisioning/pkg/generated/clientset/versioned"
@@ -922,21 +923,30 @@ func TestIntegrationConnectionController_HealthCheckUpdates(t *testing.T) {
 			return false
 		}, 10*time.Second, 500*time.Millisecond, "connection should be initially reconciled")
 
-		// Get the latest version before updating to avoid conflicts with controller updates
-		latestUnstructured, err := helper.Connections.Resource.Get(ctx, connName, metav1.GetOptions{})
+		// The controller may write status between GET and UPDATE. Retry conflicts
+		// with a fresh resource version, but fail immediately on other errors.
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			latest, err := helper.Connections.Resource.Get(ctx, connName, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			health := latest.Object["status"].(map[string]any)["health"].(map[string]any)
+			health["checked"] = time.UnixMilli(initialHealthChecked).Add(-5 * time.Minute).UnixMilli()
+			_, err = helper.Connections.Resource.UpdateStatus(ctx, latest, metav1.UpdateOptions{})
+			return err
+		})
 		require.NoError(t, err)
 
-		// Forcing the update of healthcheck - marking it as old.
-		health := latestUnstructured.Object["status"].(map[string]any)["health"].(map[string]any)
-		health["checked"] = time.UnixMilli(initialHealthChecked).Add(-5 * time.Minute).UnixMilli()
-		updated, err := helper.Connections.Resource.UpdateStatus(ctx, latestUnstructured, metav1.UpdateOptions{})
-		require.NoError(t, err)
-
-		// Update the connection spec using the latest version
-		updatedUnstructured := updated.DeepCopy()
-		githubSpec := updatedUnstructured.Object["spec"].(map[string]any)["github"].(map[string]any)
-		githubSpec["appID"] = "99999"
-		_, err = helper.UpdateGithubConnection(t, ctx, updatedUnstructured)
+		err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			latest, err := helper.Connections.Resource.Get(ctx, connName, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			githubSpec := latest.Object["spec"].(map[string]any)["github"].(map[string]any)
+			githubSpec["appID"] = "99999"
+			_, err = helper.UpdateGithubConnection(t, ctx, latest)
+			return err
+		})
 		require.NoError(t, err)
 
 		// Wait for reconciliation after spec change

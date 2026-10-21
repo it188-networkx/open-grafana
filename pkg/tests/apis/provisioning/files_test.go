@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"path"
-	"sync"
 	"testing"
 
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
@@ -376,40 +375,31 @@ func TestIntegrationProvisioning_FilesOwnershipProtection(t *testing.T) {
 	helper := runGrafana(t)
 	ctx := context.Background()
 
-	// create both repos concurrently to reduce duration of this test
+	// Prepare fixtures sequentially: SyncAndWait observes the shared job queue.
 	// Create first repository targeting "folder-1" with its own subdirectory
 	const repo1 = "ownership-repo-1"
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		helper.CreateRepo(t, TestRepo{
-			Name:   repo1,
-			Path:   path.Join(helper.ProvisioningPath, "repo1"),
-			Target: "folder",
-			Copies: map[string]string{
-				"testdata/all-panels.json": "dashboard1.json",
-			},
-			SkipResourceAssertions: true, // will check both at the same time below to reduce duration of this test
-		})
-	}()
+	helper.CreateRepo(t, TestRepo{
+		Name:   repo1,
+		Path:   path.Join(helper.ProvisioningPath, "repo1"),
+		Target: "folder",
+		Copies: map[string]string{
+			"testdata/all-panels.json": "dashboard1.json",
+		},
+		SkipResourceAssertions: true, // will check both at the same time below to reduce duration of this test
+	})
 
 	// Create second repository targeting "folder-2" with its own subdirectory
 	const repo2 = "ownership-repo-2"
 	path2 := path.Join(helper.ProvisioningPath, "repo2")
-	go func() {
-		defer wg.Done()
-		helper.CreateRepo(t, TestRepo{
-			Name:   repo2,
-			Path:   path2,
-			Target: "folder",
-			Copies: map[string]string{
-				"testdata/timeline-demo.json": "dashboard2.json",
-			},
-			SkipResourceAssertions: true, // will check both at the same time below to reduce duration of this test
-		})
-	}()
-	wg.Wait()
+	helper.CreateRepo(t, TestRepo{
+		Name:   repo2,
+		Path:   path2,
+		Target: "folder",
+		Copies: map[string]string{
+			"testdata/timeline-demo.json": "dashboard2.json",
+		},
+		SkipResourceAssertions: true, // will check both at the same time below to reduce duration of this test
+	})
 
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		dashboards, err := helper.DashboardsV1.Resource.List(t.Context(), metav1.ListOptions{})
